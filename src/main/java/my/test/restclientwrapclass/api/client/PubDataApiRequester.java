@@ -3,17 +3,21 @@ package my.test.restclientwrapclass.api.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+
 /**
- * 별도의 인코딩이 필요하지 않고, RestClient 에서 제공해주는 인코딩 방식을 사용할 경우
- * 공공데이터가 아닌 경우 (카카오, 토스 등)
+ * 별도의 인코딩이 필요하여, RestClient 에서 제공해주는 인코딩 방식을 무시해야 할 경우
+ * 공공데이터인 경우 사용
  */
 @Component
 @RequiredArgsConstructor
-public class ApiRequester {
-
+@Slf4j
+public class PubDataApiRequester {
     private final ObjectMapper om;
 
     // get
@@ -46,15 +50,21 @@ public class ApiRequester {
     public <T, R> T post(String baseUrl, String headerKey, String headerValue, String subUri, R body,
                          Class<T> responseEntityType) {
 
+        URI uri;
+        try {
+            uri = new URI(baseUrl + (subUri == null ? "" : subUri));
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
 
         /**
          * .uri() 옵션은 String 이 제공되었을경우, 인코딩해서 baseUrl 뒤에 붙인다.
          * 만약 uri 가 제공되면 기존 baseUri 를 제거하고, uri() 에 제공된 URI 객체를 url 자체로 사용한다.
          */
 
-        RestClient restClient = RestClient.create(baseUrl);
+        RestClient restClient = RestClient.create();
         RestClient.RequestHeadersSpec<?> spec = restClient.post()
-                .uri(subUri)
+                .uri(uri)
                 .body(body);
         if (headerKey != null && headerValue != null) {
             spec = spec.header(headerKey, headerValue);
